@@ -1,0 +1,34 @@
+name: AorusBossTimer
+options:
+  bundleIdPrefix: com.aorus
+  deploymentTarget:
+    iOS: "15.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  AorusBossTimer:
+    type: application
+    platform: iOS
+    sources:
+      - path: BossTimer
+    resources:
+      # Mesma interface HTML usada no Android (fonte única)
+      - path: ../app/src/main/assets/index.html
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.aorus.bosstimer
+        PRODUCT_NAME: AorusBossTimer
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: BossTimer/Info.plist
+      properties:
+        CFBundleDisplayName: Aorus Boss Timer
+        UILaunchScreen: {}
+        UIRequiredDeviceCapabilities: [arm64]
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        ITSAppUsesNonExemptEncryption: false

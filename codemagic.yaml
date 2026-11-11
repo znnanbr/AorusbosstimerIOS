@@ -1,0 +1,122 @@
+workflows:
+  android-debug-apk:
+    name: Aorus Boss Timer - Android APK
+    max_build_duration: 30
+
+    environment:
+      vars:
+        GRADLE_VERSION: 8.9
+
+    scripts:
+      - name: Prepare Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+
+      - name: Install Gradle
+        script: |
+          set -e
+          curl -L --fail --retry 3 -o /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+          unzip -q /tmp/gradle.zip -d /tmp
+          export GRADLE_HOME="/tmp/gradle-${GRADLE_VERSION}"
+          echo "Using Gradle: $GRADLE_HOME/bin/gradle"
+          "$GRADLE_HOME/bin/gradle" --version
+
+      - name: Build debug APK
+        script: |
+          set -e
+          export GRADLE_HOME="/tmp/gradle-${GRADLE_VERSION}"
+          "$GRADLE_HOME/bin/gradle" --no-daemon clean assembleDebug
+
+    artifacts:
+      - app/build/outputs/apk/debug/*.apk
+
+  # ---------------------------------------------------------------
+  # iOS 1: IPA SEM assinatura -> para instalar via Sideloadly / AltStore
+  #        (funciona com Apple ID gratuito; o app expira em 7 dias)
+  # ---------------------------------------------------------------
+  ios-unsigned-ipa:
+    name: Aorus Boss Timer - iOS IPA (sem assinatura)
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+
+    scripts:
+      - name: Instalar XcodeGen
+        script: brew install xcodegen
+
+      - name: Gerar projeto Xcode
+        script: |
+          cd ios
+          xcodegen generate
+
+      - name: Compilar (sem assinatura)
+        script: |
+          set -e
+          cd ios
+          xcodebuild archive \
+            -project AorusBossTimer.xcodeproj \
+            -scheme AorusBossTimer \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath "$CM_BUILD_DIR/build/AorusBossTimer.xcarchive" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Empacotar .ipa
+        script: |
+          set -e
+          cd "$CM_BUILD_DIR/build"
+          mkdir -p Payload
+          cp -R AorusBossTimer.xcarchive/Products/Applications/AorusBossTimer.app Payload/
+          zip -qr AorusBossTimer-unsigned.ipa Payload
+
+    artifacts:
+      - build/AorusBossTimer-unsigned.ipa
+
+  # ---------------------------------------------------------------
+  # iOS 2: IPA ASSINADO -> TestFlight / instalação direta
+  #        Requer conta Apple Developer paga (US$ 99/ano) e a integração
+  #        App Store Connect configurada no Codemagic (nome: "codemagic").
+  # ---------------------------------------------------------------
+  ios-signed-testflight:
+    name: Aorus Boss Timer - iOS (assinado / TestFlight)
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+
+    integrations:
+      app_store_connect: codemagic
+
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.aorus.bosstimer
+      vars:
+        BUNDLE_ID: com.aorus.bosstimer
+
+    scripts:
+      - name: Instalar XcodeGen
+        script: brew install xcodegen
+
+      - name: Gerar projeto Xcode
+        script: |
+          cd ios
+          xcodegen generate
+
+      - name: Aplicar assinatura
+        script: xcode-project use-profiles --project ios/AorusBossTimer.xcodeproj
+
+      - name: Gerar IPA
+        script: |
+          set -e
+          cd ios
+          xcode-project build-ipa \
+            --project AorusBossTimer.xcodeproj \
+            --scheme AorusBossTimer
+
+    artifacts:
+      - ios/build/ios/ipa/*.ipa
+
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

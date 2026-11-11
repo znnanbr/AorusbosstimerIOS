@@ -1,0 +1,3924 @@
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Aorus Tale — Boss Timer</title>
+
+<style>
+
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+*, *::before, *::after {
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+:root {
+  --gold:#c9a84c;
+  --gold-light:#e8c96a;
+  --gold-dim:#7a6230;
+
+  --bg:#0d0a07;
+  --bg-card:#141009;
+  --bg-card2:#1c1610;
+
+  --border:#2e2416;
+  --border2:#3d3020;
+
+  --text:#f0e8d0;
+  --text2:#9e8e6a;
+  --muted:#5a4e38;
+
+  --red2:#e74c3c;
+  --red3:#ff4444;
+  --yellow:#f39c12;
+  --green:#27ae60;
+}
+
+body {
+  font-family:'Inter',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+
+  background-image:
+    radial-gradient(
+      ellipse 100% 25% at 50% 0%,
+      rgba(201,168,76,0.05) 0%,
+      transparent 60%
+    );
+}
+
+/* =========================================================
+   FLASH
+========================================================= */
+
+#flash {
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:9997;
+  pointer-events:none;
+}
+
+#flash.fw {
+  display:block;
+  animation:fw .5s ease-in-out 2;
+}
+
+#flash.fa {
+  display:block;
+  animation:fa .45s ease-in-out 3;
+}
+
+#flash.fc {
+  display:block;
+  animation:fc .28s ease-in-out 6;
+}
+
+#flash.fg {
+  display:block;
+  animation:fg .5s ease-in-out 3;
+}
+
+@keyframes fw {
+  0%,100% { background:transparent; }
+  50% { background:rgba(243,156,18,.09); }
+}
+
+@keyframes fa {
+  0%,100% { background:transparent; }
+  50% { background:rgba(192,57,43,.15); }
+}
+
+@keyframes fc {
+  0%,100% { background:transparent; }
+  50% { background:rgba(255,68,68,.25); }
+}
+
+@keyframes fg {
+  0%,100% { background:transparent; }
+  50% { background:rgba(39,174,96,.15); }
+}
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+
+  padding:.9rem 1.4rem;
+
+  border-bottom:1px solid var(--border);
+
+  position:sticky;
+  top:0;
+
+  background:var(--bg);
+
+  z-index:10;
+}
+
+.header-left h1 {
+  font-family:'Cinzel',serif;
+  font-size:1rem;
+  font-weight:700;
+  color:var(--gold);
+  letter-spacing:.07em;
+}
+
+.header-left .sub {
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+  margin-top:1px;
+}
+
+.header-right {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:3px;
+}
+
+#clock {
+  font-family:'Cinzel',serif;
+  font-size:1rem;
+  color:var(--text2);
+  letter-spacing:.1em;
+}
+
+#day {
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+main {
+  max-width:640px;
+  margin:0 auto;
+
+  /*
+   * Espaço extra embaixo para os controles flutuantes
+   * sem esconder os últimos bosses.
+   */
+  padding:1rem 1rem 150px;
+
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+/* =========================================================
+   BOSS CARD
+========================================================= */
+
+.boss-card {
+  background:var(--bg-card);
+
+  border:1px solid var(--border);
+  border-left:3px solid var(--border);
+
+  border-radius:8px;
+
+  padding:.9rem 1rem;
+
+  display:flex;
+  gap:.9rem;
+  align-items:flex-start;
+
+  transition:
+    border-left-color .5s,
+    background .5s,
+    box-shadow .5s;
+
+  position:relative;
+}
+
+.boss-card::before {
+  content:'';
+
+  position:absolute;
+  top:0;
+  left:0;
+  right:0;
+
+  height:2px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      var(--gold-dim),
+      transparent
+    );
+
+  opacity:.35;
+
+  border-radius:8px 8px 0 0;
+}
+
+.boss-card.hl-soon {
+  border-left-color:var(--yellow);
+  background:rgba(243,156,18,.04);
+}
+
+.boss-card.hl-alert {
+  border-left-color:var(--red2);
+  background:rgba(231,76,60,.05);
+
+  animation:pr 1.2s ease-in-out infinite;
+}
+
+.boss-card.hl-critical {
+  border-left-color:var(--red3);
+  background:rgba(255,68,68,.07);
+
+  animation:pc .55s ease-in-out infinite;
+}
+
+.boss-card.hl-spawning {
+  border-left-color:var(--green);
+  background:rgba(39,174,96,.05);
+
+  animation:none;
+}
+
+.boss-card.hl-inactive {
+  opacity:.35;
+}
+
+@keyframes pr {
+  0%,100% {
+    box-shadow:
+      inset 3px 0 14px rgba(231,76,60,.07);
+  }
+
+  50% {
+    box-shadow:
+      inset 3px 0 24px rgba(231,76,60,.22);
+  }
+}
+
+@keyframes pc {
+  0%,100% {
+    box-shadow:
+      inset 3px 0 18px rgba(255,68,68,.12);
+  }
+
+  50% {
+    box-shadow:
+      inset 3px 0 36px rgba(255,68,68,.42);
+  }
+}
+
+.boss-img-wrap {
+  flex-shrink:0;
+
+  width:76px;
+  height:76px;
+
+  border-radius:6px;
+
+  background:var(--bg-card2);
+  border:1px solid var(--border);
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  overflow:hidden;
+}
+
+.boss-img-wrap img {
+  width:100%;
+  height:100%;
+
+  object-fit:contain;
+
+  display:block;
+
+  opacity:0;
+
+  transition:opacity .5s;
+}
+
+.boss-img-wrap img.loaded {
+  opacity:1;
+}
+
+.boss-body {
+  flex:1;
+  min-width:0;
+}
+
+.boss-top {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+
+  gap:8px;
+
+  margin-bottom:3px;
+}
+
+.boss-name {
+  font-family:'Cinzel',serif;
+  font-size:1rem;
+  font-weight:700;
+
+  color:var(--gold-light);
+
+  line-height:1.2;
+}
+
+.boss-cd {
+  font-family:'Cinzel',serif;
+
+  font-size:.9rem;
+  font-weight:700;
+
+  color:var(--muted);
+
+  white-space:nowrap;
+
+  letter-spacing:.04em;
+
+  flex-shrink:0;
+
+  transition:color .4s;
+}
+
+.boss-cd.soon {
+  color:var(--yellow);
+}
+
+.boss-cd.alert {
+  color:var(--red2);
+}
+
+.boss-cd.critical {
+  color:var(--red3);
+}
+
+.boss-cd.spawning {
+  color:var(--green);
+}
+
+.boss-location {
+  font-size:10px;
+
+  color:var(--muted);
+
+  letter-spacing:.06em;
+
+  text-transform:uppercase;
+
+  margin-bottom:8px;
+}
+
+.boss-pills {
+  display:flex;
+  flex-wrap:wrap;
+
+  gap:5px;
+
+  margin-bottom:7px;
+}
+
+.pill {
+  background:var(--bg-card2);
+
+  border:1px solid var(--border2);
+
+  border-radius:4px;
+
+  padding:2px 9px;
+
+  font-family:'Cinzel',serif;
+
+  font-size:11px;
+
+  color:var(--text2);
+
+  letter-spacing:.05em;
+
+  transition:all .3s;
+}
+
+.pill.active {
+  background:rgba(201,168,76,.12);
+
+  border-color:var(--gold);
+
+  color:var(--gold);
+}
+
+.boss-days {
+  font-size:10px;
+
+  color:var(--muted);
+
+  letter-spacing:.06em;
+
+  text-transform:uppercase;
+
+  margin-bottom:5px;
+}
+
+/* =========================================================
+   STATUS TAG
+========================================================= */
+
+.status-tag {
+  display:inline-flex;
+
+  align-items:center;
+
+  gap:4px;
+
+  font-size:10px;
+
+  padding:2px 8px;
+
+  border-radius:4px;
+
+  letter-spacing:.06em;
+
+  text-transform:uppercase;
+
+  font-weight:600;
+}
+
+.tag-waiting {
+  background:rgba(90,78,56,.3);
+  color:var(--muted);
+}
+
+.tag-soon {
+  background:rgba(243,156,18,.14);
+  color:var(--yellow);
+}
+
+.tag-alert {
+  background:rgba(231,76,60,.16);
+  color:var(--red2);
+}
+
+.tag-critical {
+  background:rgba(255,68,68,.22);
+  color:var(--red3);
+}
+
+.tag-spawning {
+  background:rgba(39,174,96,.14);
+  color:var(--green);
+}
+
+.tag-inactive {
+  background:rgba(40,34,24,.5);
+  color:var(--muted);
+}
+
+/* =========================================================
+   ALERT PANEL
+========================================================= */
+
+#alert-panel {
+  position:fixed;
+
+  /*
+   * Fica acima dos controles inferiores.
+   */
+  bottom:110px;
+
+  left:50%;
+
+  transform:
+    translateX(-50%)
+    translateY(20px);
+
+  width:min(520px,calc(100vw - 28px));
+
+  background:#0f0b07;
+
+  border:1px solid var(--border2);
+
+  border-top:3px solid var(--yellow);
+
+  border-radius:10px;
+
+  z-index:9998;
+
+  overflow:hidden;
+
+  box-shadow:0 10px 50px rgba(0,0,0,.85);
+
+  opacity:0;
+
+  pointer-events:none;
+
+  transition:
+    opacity .4s ease,
+    transform .4s ease,
+    border-top-color .5s,
+    box-shadow .5s;
+
+  display:flex;
+
+  flex-direction:column;
+}
+
+#alert-panel.open {
+  opacity:1;
+
+  pointer-events:all;
+
+  transform:
+    translateX(-50%)
+    translateY(0);
+}
+
+#alert-panel.lvl-soon {
+  border-top-color:var(--yellow);
+}
+
+#alert-panel.lvl-alert {
+  border-top-color:var(--red2);
+
+  box-shadow:
+    0 10px 50px rgba(0,0,0,.85),
+    0 0 20px rgba(231,76,60,.15);
+}
+
+#alert-panel.lvl-critical {
+  border-top-color:var(--red3);
+
+  box-shadow:
+    0 10px 50px rgba(0,0,0,.85),
+    0 0 30px rgba(255,68,68,.25);
+}
+
+#alert-panel.lvl-spawning {
+  border-top-color:var(--green);
+
+  box-shadow:
+    0 10px 50px rgba(0,0,0,.85),
+    0 0 20px rgba(39,174,96,.15);
+}
+
+.panel-header {
+  display:flex;
+
+  align-items:center;
+
+  justify-content:space-between;
+
+  padding:9px 14px;
+
+  border-bottom:1px solid var(--border);
+
+  background:rgba(255,255,255,.02);
+}
+
+#panel-label {
+  font-family:'Cinzel',serif;
+
+  font-size:11px;
+
+  font-weight:700;
+
+  letter-spacing:.12em;
+
+  text-transform:uppercase;
+
+  color:var(--yellow);
+}
+
+#alert-panel.lvl-alert #panel-label {
+  color:var(--red2);
+}
+
+#alert-panel.lvl-critical #panel-label {
+  color:var(--red3);
+}
+
+#alert-panel.lvl-spawning #panel-label {
+  color:var(--green);
+}
+
+.panel-live {
+  display:flex;
+
+  align-items:center;
+
+  gap:5px;
+
+  font-size:10px;
+
+  color:var(--muted);
+}
+
+#live-dot {
+  width:6px;
+  height:6px;
+
+  border-radius:50%;
+
+  background:var(--yellow);
+
+  animation:blink 1s ease-in-out infinite;
+}
+
+#alert-panel.lvl-alert #live-dot {
+  background:var(--red2);
+}
+
+#alert-panel.lvl-critical #live-dot {
+  background:var(--red3);
+}
+
+#alert-panel.lvl-spawning #live-dot {
+  background:var(--green);
+}
+
+@keyframes blink {
+  0%,100% { opacity:1; }
+  50% { opacity:.15; }
+}
+
+.panel-close {
+  background:transparent;
+
+  border:none;
+
+  color:var(--muted);
+
+  font-size:16px;
+
+  cursor:pointer;
+
+  padding:0 0 0 10px;
+
+  line-height:1;
+}
+
+.panel-close:hover {
+  color:var(--text);
+}
+
+#panel-body {
+  display:flex;
+
+  flex-direction:column;
+}
+
+.panel-boss {
+  display:flex;
+
+  align-items:center;
+
+  gap:14px;
+
+  padding:12px 14px;
+
+  border-bottom:1px solid var(--border);
+}
+
+.panel-boss:last-child {
+  border-bottom:none;
+}
+
+.panel-img-wrap {
+  width:60px;
+  height:60px;
+
+  border-radius:6px;
+
+  background:var(--bg-card2);
+
+  border:1px solid var(--border2);
+
+  display:flex;
+
+  align-items:center;
+
+  justify-content:center;
+
+  overflow:hidden;
+
+  flex-shrink:0;
+}
+
+.panel-img-wrap img {
+  width:100%;
+  height:100%;
+
+  object-fit:contain;
+
+  opacity:0;
+
+  transition:opacity .5s;
+}
+
+.panel-img-wrap img.loaded {
+  opacity:1;
+}
+
+.panel-info {
+  flex:1;
+
+  min-width:0;
+}
+
+.panel-boss-name {
+  font-family:'Cinzel',serif;
+
+  font-size:1rem;
+
+  font-weight:700;
+
+  color:var(--text);
+}
+
+.panel-boss-loc {
+  font-size:10px;
+
+  color:var(--muted);
+
+  letter-spacing:.06em;
+
+  text-transform:uppercase;
+
+  margin-top:3px;
+}
+
+.panel-cd {
+  font-family:'Cinzel',serif;
+
+  font-size:1.35rem;
+
+  font-weight:700;
+
+  letter-spacing:.05em;
+
+  flex-shrink:0;
+
+  min-width:75px;
+
+  text-align:right;
+
+  color:var(--yellow);
+}
+
+#alert-panel.lvl-alert .panel-cd {
+  color:var(--red2);
+}
+
+#alert-panel.lvl-critical .panel-cd {
+  color:var(--red3);
+}
+
+#alert-panel.lvl-spawning .panel-cd {
+  color:var(--green);
+}
+
+/* =========================================================
+   CONTROLES FLUTUANTES
+========================================================= */
+
+#floating-controls {
+
+  position:fixed;
+
+  /*
+   * IMPORTANTE:
+   * não fica mais colado no rodapé.
+   * Isso evita ficar em cima dos botões
+   * de voltar/home do Android.
+   */
+  left:50%;
+
+  bottom:
+    calc(58px + env(safe-area-inset-bottom));
+
+  transform:translateX(-50%);
+
+  width:min(620px,calc(100vw - 20px));
+
+  display:flex;
+
+  flex-wrap:wrap;
+
+  justify-content:center;
+
+  align-items:center;
+
+  gap:7px;
+
+  padding:9px 10px;
+
+  background:rgba(13,10,7,.96);
+
+  border:1px solid var(--border2);
+
+  border-radius:14px;
+
+  box-shadow:
+    0 8px 30px rgba(0,0,0,.75),
+    0 0 20px rgba(0,0,0,.35);
+
+  backdrop-filter:blur(8px);
+
+  z-index:10000;
+}
+
+.float-btn {
+
+  min-height:38px;
+
+  padding:6px 12px;
+
+  border-radius:8px;
+
+  border:1px solid var(--border2);
+
+  background:var(--bg-card2);
+
+  color:var(--text2);
+
+  font-family:'Inter',sans-serif;
+
+  font-size:11px;
+
+  font-weight:600;
+
+  cursor:pointer;
+
+  transition:
+    border-color .2s,
+    color .2s,
+    background .2s,
+    transform .1s;
+}
+
+.float-btn:active {
+  transform:scale(.96);
+}
+
+.float-btn.active {
+  border-color:var(--red3);
+
+  color:var(--red3);
+
+  background:rgba(255,68,68,.10);
+}
+
+#float-sound.active {
+  border-color:var(--gold);
+
+  color:var(--gold);
+
+  background:rgba(201,168,76,.10);
+}
+
+#float-notif.active {
+  border-color:var(--green);
+
+  color:var(--green);
+
+  background:rgba(39,174,96,.10);
+}
+
+.alert-controls {
+  display:flex;
+
+  gap:7px;
+}
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+#aorus-toast {
+  position:fixed;
+
+  left:50%;
+
+  /*
+   * Acima dos controles.
+   */
+  bottom:
+    calc(125px + env(safe-area-inset-bottom));
+
+  transform:translateX(-50%);
+
+  z-index:11000;
+
+  background:#171009;
+
+  border:1px solid #3d3020;
+
+  color:#f0e8d0;
+
+  padding:9px 15px;
+
+  border-radius:8px;
+
+  font-size:12px;
+
+  font-family:Inter,sans-serif;
+
+  box-shadow:0 8px 25px rgba(0,0,0,.65);
+
+  transition:opacity .25s;
+
+  white-space:nowrap;
+
+  pointer-events:none;
+}
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+footer {
+  text-align:center;
+
+  padding:.8rem;
+
+  font-size:10px;
+
+  color:var(--muted);
+
+  border-top:1px solid var(--border);
+
+  letter-spacing:.06em;
+
+  margin-top:.5rem;
+}
+
+/* =========================================================
+   CELULAR
+========================================================= */
+
+@media (max-width:430px) {
+
+  main {
+    padding-left:8px;
+    padding-right:8px;
+
+    /*
+     * Espaço suficiente para o painel de controles.
+     */
+    padding-bottom:155px;
+  }
+
+  #floating-controls {
+
+    width:calc(100vw - 14px);
+
+    bottom:
+      calc(58px + env(safe-area-inset-bottom));
+
+    padding:8px 6px;
+
+    gap:5px;
+  }
+
+  .float-btn {
+
+    min-height:36px;
+
+    padding:5px 9px;
+
+    font-size:10px;
+  }
+
+  .alert-controls {
+    gap:5px;
+  }
+
+  .boss-card {
+    padding:.75rem .75rem;
+
+    gap:.7rem;
+  }
+
+  .boss-img-wrap {
+    width:68px;
+    height:68px;
+  }
+
+  #alert-panel {
+    bottom:115px;
+
+    width:calc(100vw - 18px);
+  }
+}
+</style>
+
+</head>
+
+<body>
+
+<div id="flash"></div>
+
+<!-- =========================================================
+     CONTROLES
+========================================================= -->
+
+<div id="floating-controls">
+
+<button
+ id="float-sound"
+ class="float-btn active"
+ onclick="toggleSound()">
+🔊 Som </button>
+
+<button
+ id="float-notif"
+ class="float-btn"
+ onclick="toggleNotifications()">
+📴 Notificações </button>
+
+  <div class="alert-controls">
+
+```
+<button
+  id="alert-5"
+  class="float-btn active"
+  onclick="toggleAlertType('5')">
+  🔴 5 MIN
+</button>
+
+<button
+  id="alert-1"
+  class="float-btn active"
+  onclick="toggleAlertType('1')">
+  🚨 1 MIN
+</button>
+
+<button
+  id="alert-spawn"
+  class="float-btn active"
+  onclick="toggleAlertType('spawn')">
+  ⚔ NASCE
+</button>
+```
+
+  </div>
+
+</div>
+
+<!-- =========================================================
+     PAINEL DE ALERTA
+========================================================= -->
+
+<div id="alert-panel" class="lvl-soon">
+
+  <div class="panel-header">
+
+```
+<span id="panel-label">
+  ⚠ Em breve — 15 minutos
+</span>
+
+<div class="panel-live">
+
+  <div id="live-dot"></div>
+
+  <span>Ao vivo</span>
+
+</div>
+
+<button
+  class="panel-close"
+  onclick="userClosePanel()">
+  ✕
+</button>
+```
+
+  </div>
+
+  <div id="panel-body"></div>
+
+</div>
+
+<!-- =========================================================
+     HEADER
+========================================================= -->
+
+<header>
+
+  <div class="header-left">
+
+```
+<h1>⚔ BOSS TIMER</h1>
+
+<div class="sub">
+  Aorus Tale · Horário BRT
+</div>
+```
+
+  </div>
+
+  <div class="header-right">
+
+```
+<div id="clock">
+  --:--:--
+</div>
+
+<div id="day">
+  ---
+</div>
+```
+
+  </div>
+
+</header>
+
+<!-- =========================================================
+     LISTA
+========================================================= -->
+
+<main id="main-list"></main>
+
+<footer>
+  Horários em Brasília (BRT) · Ordenado pelo próximo spawn · Boss Timer v4.0
+</footer>
+
+<script>
+
+/* =========================================================
+   DIAS
+========================================================= */
+
+const DIAS = [
+  'Domingo',
+  'Segunda',
+  'Terça',
+  'Quarta',
+  'Quinta',
+  'Sexta',
+  'Sábado'
+];
+
+
+/* =========================================================
+   BOSSES
+========================================================= */
+
+const BOSSES = [
+
+  {
+    id:'king-devil',
+    name:'King Devil Bird',
+    location:'Campo Aberto',
+    scheduleType:'daily',
+    times:['15:00','22:00'],
+    days:null,
+    dayTimeMap:null,
+    daysLabel:'Diariamente',
+    img:'https://www.aorustale.com/media/bosses/king-devil-bird.webp',
+    icon:'🦅'
+  },
+
+  {
+    id:'queen-chaos',
+    name:'Queen Chaos Cara',
+    location:'Campo Aberto',
+    scheduleType:'daily',
+    times:['13:30','22:00'],
+    days:null,
+    dayTimeMap:null,
+    daysLabel:'Diariamente',
+    img:'https://www.aorustale.com/media/bosses/queen-chaos-cara.webp',
+    icon:'👸'
+  },
+
+  {
+    id:'kelvezu',
+    name:'Kelvezu',
+    location:'Kelvezu Cave',
+    scheduleType:'daily',
+    times:['00:30','06:30','12:30','18:30'],
+    days:null,
+    dayTimeMap:null,
+    daysLabel:'Diariamente',
+    img:'https://i.imgur.com/GmpUcUw.png',
+    icon:'🐲'
+  },
+
+  {
+    id:'valento',
+    name:'Valento',
+    location:'Gallubia Valley',
+    scheduleType:'daily',
+    times:['04:30','10:30','16:30','20:30'],
+    days:null,
+    dayTimeMap:null,
+    daysLabel:'Diariamente',
+    img:'https://i.imgur.com/JctDngf.png',
+    icon:'⚔️'
+  },
+
+  {
+    id:'mokova',
+    name:'Mokova',
+    location:'Lost Temple',
+    scheduleType:'daily',
+    times:['02:30','10:30','14:30','20:30'],
+    days:null,
+    dayTimeMap:null,
+    daysLabel:'Diariamente',
+    img:'https://i.imgur.com/lYazJS1.png',
+    icon:'💀'
+  },
+
+  {
+    id:'fury',
+    name:'Fury',
+    location:'Endless Tower 1°',
+    scheduleType:'daily',
+    times:['04:30','08:30','16:30','22:30'],
+    days:null,
+    dayTimeMap:null,
+    daysLabel:'Diariamente',
+    img:'https://i.imgur.com/zlbMhGv.png',
+    icon:'😈'
+  },
+
+  {
+    id:'shy',
+    name:'Shy',
+    location:'Endless Tower 3°',
+    scheduleType:'daily',
+    times:['00:30','06:30','12:30','22:30'],
+    days:null,
+    dayTimeMap:null,
+    daysLabel:'Diariamente',
+    img:'https://i.imgur.com/LlToV5v.png',
+    icon:'🦇'
+  },
+
+  {
+    id:'tulla',
+    name:'Tulla',
+    location:'Ice Mine',
+    scheduleType:'daily',
+    times:['09:00','15:00','22:00'],
+    days:null,
+    dayTimeMap:null,
+    daysLabel:'Diariamente',
+    img:'https://i.imgur.com/BmcZ3KN.png',
+    icon:'❄️'
+  },
+  {
+    id:'greedy',
+    name:'greedy',
+    location:'Ancient Armor',
+    scheduleType:'daily',
+    times:['09:30','23:30'],
+    days:null,
+    dayTimeMap:null,
+    daysLabel:'Diariamente',
+    img:'https://lh3.googleusercontent.com/d/1zmFvfXPUyVsxBGrFA4S6Et3itq3zoeRV',
+    icon:'❄️'
+  },
+  {
+    id:'antrallos',
+    name:'Antrallos',
+    location:'Expedição',
+    scheduleType:'weekdays',
+    times:['13:00','21:30'],
+    days:[2,4],
+    dayTimeMap:null,
+    daysLabel:'Terças e Quintas',
+    img:'https://www.aorustale.com/media/bosses/antrallos.png',
+    icon:'🐉'
+  },
+
+  {
+    id:'babel',
+    name:'Babel',
+    location:'Railway of Chaos',
+    scheduleType:'daily',
+    times:['02:30','08:30','14:30','18:30'],
+    days:null,
+    dayTimeMap:null,
+    daysLabel:'Diariamente',
+    img:'https://i.imgur.com/Y7OiQ4Q.png',
+    icon:'🔱'
+  },
+
+  {
+    id:'flame-maiden',
+    name:'Flame Maiden',
+    location:'Evento Firelands',
+    scheduleType:'weekdays',
+    times:[],
+    days:[6,0],
+    dayTimeMap:{
+      6:['15:30'],
+      0:['20:30']
+    },
+    daysLabel:'Sábado e Domingo',
+    img:'https://www.aorustale.com/media/bosses/dama-flamejante.gif',
+    icon:'🔥'
+  },
+
+  {
+    id:'aorus-god',
+    name:'Aorus God',
+    location:'Pyramid',
+    scheduleType:'weekdays',
+    times:[],
+    days:[6,0],
+    dayTimeMap:{
+      6:['13:00','20:30'],
+      0:['09:30','19:30']
+    },
+    daysLabel:'Fins de Semana',
+    img:'https://www.aorustale.com/media/bosses/rei-aorus.gif',
+    icon:'🌟'
+  },
+
+ 
+{
+  id: 'hells-gate',
+  name: 'Hells Gate',
+  location: 'Evento',
+  scheduleType: 'daily',
+  times: ['12:00', '20:00'],
+  days: [],
+  daysLabel: 'Diariamente',
+  img: 'https://i.imgur.com/zlbMhGv.png',
+  icon: '🔥'
+}
+
+
+];
+
+
+/* =========================================================
+   ESTADO
+========================================================= */
+
+let soundEnabled = true;
+
+let audioUnlocked = false;
+
+let audioCtx = null;
+
+let notificationsEnabled = false;
+
+
+/*
+ * Alertas selecionados.
+ *
+ * 5    = 5 minutos
+ * 1    = 1 minuto
+ * spawn = nascimento
+ */
+
+let selectedAlertTypes = new Set([
+  '5',
+  '1',
+  'spawn'
+]);
+
+
+/*
+ * Impede o mesmo alerta de tocar várias vezes.
+ */
+
+const alertedSet = new Set();
+
+
+/* =========================================================
+   CARREGAR CONFIGURAÇÕES
+========================================================= */
+
+function loadSettings() {
+
+  try {
+
+    const sound =
+      localStorage.getItem('aorus_sound');
+
+    if (sound !== null) {
+
+      soundEnabled =
+        sound === '1';
+
+    }
+
+
+    const notif =
+      localStorage.getItem('aorus_notifications');
+
+    if (notif !== null) {
+
+      notificationsEnabled =
+        notif === '1';
+
+    }
+
+
+    const alerts =
+      localStorage.getItem('aorus_alert_types');
+
+    if (alerts) {
+
+      const arr =
+        JSON.parse(alerts);
+
+      selectedAlertTypes =
+        new Set(arr);
+
+    }
+
+  } catch(e) {}
+
+  updateControlButtons();
+
+}
+
+
+/* =========================================================
+   SALVAR CONFIGURAÇÕES
+========================================================= */
+
+function saveSettings() {
+
+  try {
+
+    localStorage.setItem(
+      'aorus_sound',
+      soundEnabled ? '1' : '0'
+    );
+
+    localStorage.setItem(
+      'aorus_notifications',
+      notificationsEnabled ? '1' : '0'
+    );
+
+    localStorage.setItem(
+      'aorus_alert_types',
+      JSON.stringify(
+        Array.from(selectedAlertTypes)
+      )
+    );
+
+  } catch(e) {}
+
+}
+
+
+/* =========================================================
+   ÁUDIO
+========================================================= */
+
+function activateAudio() {
+
+  try {
+
+    if (!audioCtx) {
+
+      audioCtx =
+        new (
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+
+    }
+
+    if (audioCtx.state === 'suspended') {
+
+      audioCtx.resume();
+
+    }
+
+    audioUnlocked = true;
+
+  } catch(e) {}
+
+  updateControlButtons();
+
+}
+
+
+/* =========================================================
+   SOM ON / OFF
+========================================================= */
+
+function toggleSound() {
+
+  soundEnabled =
+    !soundEnabled;
+
+  if (soundEnabled) {
+
+    activateAudio();
+
+    showToast(
+      'Som ativado'
+    );
+
+  } else {
+
+    if (window.speechSynthesis) {
+
+      window.speechSynthesis.cancel();
+
+    }
+
+    showToast(
+      'Som desativado'
+    );
+
+  }
+
+  saveSettings();
+
+  updateControlButtons();
+
+}
+
+
+/* =========================================================
+   NOTIFICAÇÕES ON / OFF
+========================================================= */
+
+function toggleNotifications() {
+
+  if (!window.AndroidNotifications) {
+
+    showToast(
+      'Disponível somente no aplicativo (Android/iPhone)'
+    );
+
+    return;
+
+  }
+
+
+  notificationsEnabled =
+    !notificationsEnabled;
+
+
+  if (notificationsEnabled) {
+
+    try {
+
+      if (
+        AndroidNotifications.requestPermission
+      ) {
+
+        AndroidNotifications.requestPermission();
+
+      }
+
+
+      if (
+        AndroidNotifications.enableNotifications
+      ) {
+
+        AndroidNotifications.enableNotifications(
+          JSON.stringify(BOSSES)
+        );
+
+      }
+
+
+      /*
+       * Também envia os tipos selecionados.
+       */
+
+      if (
+        AndroidNotifications.setAlertTypes
+      ) {
+
+        AndroidNotifications.setAlertTypes(
+          JSON.stringify(
+            Array.from(selectedAlertTypes)
+          )
+        );
+
+      }
+
+
+      showToast(
+        'Notificações ativadas'
+      );
+
+    } catch(e) {
+
+      notificationsEnabled = false;
+
+      showToast(
+        'Não foi possível ativar as notificações'
+      );
+
+    }
+
+  } else {
+
+    try {
+
+      if (
+        AndroidNotifications.disableNotifications
+      ) {
+
+        AndroidNotifications.disableNotifications();
+
+      }
+
+      showToast(
+        'Notificações desativadas'
+      );
+
+    } catch(e) {
+
+      showToast(
+        'Notificações desativadas'
+      );
+
+    }
+
+  }
+
+  saveSettings();
+
+  updateControlButtons();
+
+}
+
+
+/* =========================================================
+   ALERTAS 5 / 1 / NASCE
+========================================================= */
+
+function toggleAlertType(type) {
+
+  const names = {
+
+    '5':'Alerta de 5 minutos',
+
+    '1':'Alerta de 1 minuto',
+
+    'spawn':'Alerta de nascimento'
+
+  };
+
+
+  if (
+    selectedAlertTypes.has(type)
+  ) {
+
+    selectedAlertTypes.delete(type);
+
+    showToast(
+      names[type] + ' desativado'
+    );
+
+  } else {
+
+    selectedAlertTypes.add(type);
+
+    showToast(
+      names[type] + ' ativado'
+    );
+
+  }
+
+
+  saveSettings();
+
+
+  /*
+   * Atualiza imediatamente o Android.
+   */
+
+  try {
+
+    if (
+      window.AndroidNotifications &&
+      AndroidNotifications.setAlertTypes
+    ) {
+
+      AndroidNotifications.setAlertTypes(
+        JSON.stringify(
+          Array.from(selectedAlertTypes)
+        )
+      );
+
+    }
+
+  } catch(e) {}
+
+
+  updateControlButtons();
+
+}
+
+
+/* =========================================================
+   ATUALIZA BOTÕES
+========================================================= */
+
+function updateControlButtons() {
+
+  const sound =
+    document.getElementById(
+      'float-sound'
+    );
+
+  const notif =
+    document.getElementById(
+      'float-notif'
+    );
+
+  const b5 =
+    document.getElementById(
+      'alert-5'
+    );
+
+  const b1 =
+    document.getElementById(
+      'alert-1'
+    );
+
+  const spawn =
+    document.getElementById(
+      'alert-spawn'
+    );
+
+
+  if (sound) {
+
+    sound.classList.toggle(
+      'active',
+      soundEnabled
+    );
+
+    sound.textContent =
+      soundEnabled
+        ? '🔊 Som'
+        : '🔇 Som';
+
+  }
+
+
+  if (notif) {
+
+    notif.classList.toggle(
+      'active',
+      notificationsEnabled
+    );
+
+    notif.textContent =
+      notificationsEnabled
+        ? '📲 Notificações'
+        : '📴 Notificações';
+
+  }
+
+
+  if (b5) {
+
+    b5.classList.toggle(
+      'active',
+      selectedAlertTypes.has('5')
+    );
+
+  }
+
+
+  if (b1) {
+
+    b1.classList.toggle(
+      'active',
+      selectedAlertTypes.has('1')
+    );
+
+  }
+
+
+  if (spawn) {
+
+    spawn.classList.toggle(
+      'active',
+      selectedAlertTypes.has('spawn')
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   TOAST
+========================================================= */
+
+function showToast(text) {
+
+  let toast =
+    document.getElementById(
+      'aorus-toast'
+    );
+
+
+  if (!toast) {
+
+    toast =
+      document.createElement(
+        'div'
+      );
+
+    toast.id =
+      'aorus-toast';
+
+    document.body.appendChild(
+      toast
+    );
+
+  }
+
+
+  toast.textContent =
+    text;
+
+  toast.style.opacity =
+    '1';
+
+
+  clearTimeout(
+    toast._timer
+  );
+
+
+  toast._timer =
+    setTimeout(
+      () => {
+
+        toast.style.opacity =
+          '0';
+
+      },
+      1600
+    );
+
+}
+
+
+/* =========================================================
+   TEMPO / BRT
+========================================================= */
+
+function getBRT() {
+
+  const utc =
+    Date.now() +
+    new Date().getTimezoneOffset() * 60000;
+
+  return new Date(
+    utc +
+    (-3 * 60) * 60000
+  );
+
+}
+
+
+function toSec(str) {
+
+  const [h,m] =
+    str.split(':').map(Number);
+
+  return h * 3600 +
+         m * 60;
+
+}
+
+
+function getActiveTimes(
+  boss,
+  dayIdx
+) {
+
+  if (
+    boss.scheduleType === 'daily'
+  ) {
+
+    return boss.times;
+
+  }
+
+
+  if (
+    !boss.days.includes(dayIdx)
+  ) {
+
+    return [];
+
+  }
+
+
+  if (boss.dayTimeMap) {
+
+    return (
+      boss.dayTimeMap[dayIdx] ||
+      []
+    );
+
+  }
+
+
+  return boss.times;
+
+}
+
+
+function getAllTimes(boss) {
+
+  if (boss.dayTimeMap) {
+
+    return Object
+      .values(boss.dayTimeMap)
+      .flat();
+
+  }
+
+  return boss.times;
+
+}
+
+
+function getNextSpawn(boss) {
+
+  const brt =
+    getBRT();
+
+  const dayIdx =
+    brt.getDay();
+
+  const nowSec =
+    brt.getHours() * 3600 +
+    brt.getMinutes() * 60 +
+    brt.getSeconds();
+
+
+  let c = [];
+
+
+  for (
+    let d = 0;
+    d < 7;
+    d++
+  ) {
+
+    const tDay =
+      (dayIdx + d) % 7;
+
+
+    for (
+      const t of getActiveTimes(
+        boss,
+        tDay
+      )
+    ) {
+
+      const diff =
+        d * 86400 +
+        toSec(t) -
+        nowSec;
+
+
+      if (
+        diff > -130
+      ) {
+
+        c.push({
+
+          diffSec:
+            Math.floor(diff),
+
+          time:t,
+
+          dayIdx:tDay
+
+        });
+
+      }
+
+    }
+
+  }
+
+
+  if (!c.length) {
+
+    return null;
+
+  }
+
+
+  c.sort(
+    (a,b) =>
+      a.diffSec -
+      b.diffSec
+  );
+
+
+  return c[0];
+
+}
+
+
+/* =========================================================
+   FORMATAÇÃO
+========================================================= */
+
+function fmt(sec) {
+
+  if (sec <= 0) {
+
+    return '00:00';
+
+  }
+
+
+  const h =
+    Math.floor(sec / 3600);
+
+  const m =
+    Math.floor(
+      (sec % 3600) / 60
+    );
+
+  const s =
+    sec % 60;
+
+
+  const p =
+    n =>
+      String(n).padStart(
+        2,
+        '0'
+      );
+
+
+  return h > 0
+
+    ? `${h}h ${p(m)}m`
+
+    : `${p(m)}:${p(s)}`;
+
+}
+
+
+function getStatus(d) {
+
+  if (
+    d <= 0 &&
+    d > -120
+  ) {
+
+    return 'spawning';
+
+  }
+
+  if (d <= 60) {
+
+    return 'critical';
+
+  }
+
+  if (d <= 300) {
+
+    return 'alert';
+
+  }
+
+  if (d <= 900) {
+
+    return 'soon';
+
+  }
+
+  return 'waiting';
+
+}
+
+
+/* =========================================================
+   SOM
+========================================================= */
+
+function playSound(type) {
+
+  if (
+    !soundEnabled ||
+    !audioUnlocked
+  ) {
+
+    return;
+
+  }
+
+
+  try {
+
+    if (!audioCtx) {
+
+      audioCtx =
+        new (
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+
+    }
+
+
+    if (
+      audioCtx.state === 'suspended'
+    ) {
+
+      audioCtx.resume();
+
+    }
+
+
+    const ctx =
+      audioCtx;
+
+
+    if (type === 'spawn') {
+
+      [
+        [440,0,.12,'sine'],
+        [554,.15,.12,'sine'],
+        [659,.30,.15,'sine'],
+        [880,.46,.38,'sine']
+      ]
+      .forEach(
+        ([f,s,d,tp]) => {
+
+          const o =
+            ctx.createOscillator();
+
+          const g =
+            ctx.createGain();
+
+          o.connect(g);
+
+          g.connect(
+            ctx.destination
+          );
+
+          o.type =
+            tp;
+
+          o.frequency.value =
+            f;
+
+          g.gain.setValueAtTime(
+            .9,
+            ctx.currentTime + s
+          );
+
+          g.gain.exponentialRampToValueAtTime(
+            .001,
+            ctx.currentTime + s + d
+          );
+
+          o.start(
+            ctx.currentTime + s
+          );
+
+          o.stop(
+            ctx.currentTime + s + d + .05
+          );
+
+        }
+      );
+
+
+      const o =
+        ctx.createOscillator();
+
+      const g =
+        ctx.createGain();
+
+      o.connect(g);
+
+      g.connect(
+        ctx.destination
+      );
+
+      o.type =
+        'sine';
+
+      o.frequency.value =
+        1100;
+
+      g.gain.setValueAtTime(
+        .9,
+        ctx.currentTime + .85
+      );
+
+      g.gain.exponentialRampToValueAtTime(
+        .001,
+        ctx.currentTime + 1.45
+      );
+
+      o.start(
+        ctx.currentTime + .85
+      );
+
+      o.stop(
+        ctx.currentTime + 1.5
+      );
+
+    }
+
+    else if (type === 'warn15') {
+
+      [
+        [660,0,.15],
+        [880,.22,.2]
+      ]
+      .forEach(
+        ([f,s,d]) => {
+
+          const o =
+            ctx.createOscillator();
+
+          const g =
+            ctx.createGain();
+
+          o.connect(g);
+
+          g.connect(
+            ctx.destination
+          );
+
+          o.type =
+            'sine';
+
+          o.frequency.value =
+            f;
+
+          g.gain.setValueAtTime(
+            .85,
+            ctx.currentTime + s
+          );
+
+          g.gain.exponentialRampToValueAtTime(
+            .001,
+            ctx.currentTime + s + d
+          );
+
+          o.start(
+            ctx.currentTime + s
+          );
+
+          o.stop(
+            ctx.currentTime + s + d + .05
+          );
+
+        }
+      );
+
+    }
+
+    else if (type === 'alert5') {
+
+      for (
+        let i = 0;
+        i < 3;
+        i++
+      ) {
+
+        const o =
+          ctx.createOscillator();
+
+        const g =
+          ctx.createGain();
+
+        o.connect(g);
+
+        g.connect(
+          ctx.destination
+        );
+
+        o.type =
+          'sawtooth';
+
+        o.frequency.setValueAtTime(
+          1200,
+          ctx.currentTime + i * .38
+        );
+
+        o.frequency.linearRampToValueAtTime(
+          580,
+          ctx.currentTime +
+          i * .38 +
+          .32
+        );
+
+        g.gain.setValueAtTime(
+          .9,
+          ctx.currentTime + i * .38
+        );
+
+        g.gain.exponentialRampToValueAtTime(
+          .001,
+          ctx.currentTime +
+          i * .38 +
+          .33
+        );
+
+        o.start(
+          ctx.currentTime +
+          i * .38
+        );
+
+        o.stop(
+          ctx.currentTime +
+          i * .38 +
+          .36
+        );
+
+      }
+
+    }
+
+    else if (
+      type === 'critical1'
+    ) {
+
+      for (
+        let i = 0;
+        i < 7;
+        i++
+      ) {
+
+        const o =
+          ctx.createOscillator();
+
+        const g =
+          ctx.createGain();
+
+        o.connect(g);
+
+        g.connect(
+          ctx.destination
+        );
+
+        o.type =
+          'square';
+
+        o.frequency.value =
+          i % 2 === 0
+            ? 1400
+            : 880;
+
+        g.gain.setValueAtTime(
+          .95,
+          ctx.currentTime +
+          i * .16
+        );
+
+        g.gain.exponentialRampToValueAtTime(
+          .001,
+          ctx.currentTime +
+          i * .16 +
+          .13
+        );
+
+        o.start(
+          ctx.currentTime +
+          i * .16
+        );
+
+        o.stop(
+          ctx.currentTime +
+          i * .16 +
+          .15
+        );
+
+      }
+
+    }
+
+  } catch(e) {}
+
+}
+
+
+/* =========================================================
+   VOZ
+========================================================= */
+
+const voiceQueue = [];
+
+let voicePlaying =
+  false;
+
+
+function speak(text) {
+
+  if (
+    !soundEnabled ||
+    !audioUnlocked ||
+    !window.speechSynthesis
+  ) {
+
+    return;
+
+  }
+
+
+  voiceQueue.push(
+    text
+  );
+
+
+  if (!voicePlaying) {
+
+    processVoiceQueue();
+
+  }
+
+}
+
+
+function processVoiceQueue() {
+
+  if (
+    !voiceQueue.length
+  ) {
+
+    voicePlaying =
+      false;
+
+    return;
+
+  }
+
+
+  voicePlaying =
+    true;
+
+
+  const text =
+    voiceQueue.shift();
+
+
+  try {
+
+    const utt =
+      new SpeechSynthesisUtterance(
+        text
+      );
+
+    utt.lang =
+      'pt-BR';
+
+    utt.rate =
+      .95;
+
+    utt.pitch =
+      1;
+
+    utt.volume =
+      1;
+
+
+    const voices =
+      window.speechSynthesis
+        .getVoices();
+
+
+    const pt =
+      voices.find(
+        v =>
+          v.lang ===
+          'pt-BR'
+      ) ||
+      voices.find(
+        v =>
+          v.lang.startsWith(
+            'pt'
+          )
+      );
+
+
+    if (pt) {
+
+      utt.voice =
+        pt;
+
+    }
+
+
+    utt.onend =
+      () => {
+
+        voicePlaying =
+          false;
+
+        processVoiceQueue();
+
+      };
+
+
+    utt.onerror =
+      () => {
+
+        voicePlaying =
+          false;
+
+        processVoiceQueue();
+
+      };
+
+
+    window.speechSynthesis
+      .speak(utt);
+
+  }
+
+  catch(e) {
+
+    voicePlaying =
+      false;
+
+    processVoiceQueue();
+
+  }
+
+}
+
+
+/* =========================================================
+   FLASH
+========================================================= */
+
+function showFlash(cls) {
+
+  const el =
+    document.getElementById(
+      'flash'
+    );
+
+  el.className =
+    '';
+
+  void el.offsetWidth;
+
+  el.className =
+    cls;
+
+
+  setTimeout(
+    () => {
+
+      el.className =
+        '';
+
+    },
+    2500
+  );
+
+}
+
+
+/* =========================================================
+   ALERTAS
+========================================================= */
+
+function checkAlerts(
+  boss,
+  next
+) {
+
+  if (!next) {
+
+    return;
+
+  }
+
+
+  const d =
+    next.diffSec;
+
+
+  const base =
+    `${boss.id}-${next.time}-${next.dayIdx}`;
+
+
+  function fire(
+    type,
+    lo,
+    hi,
+    snd,
+    fl,
+    msg
+  ) {
+
+    /*
+     * Agora o alerta só dispara
+     * se estiver selecionado.
+     */
+
+    if (
+      !selectedAlertTypes.has(type)
+    ) {
+
+      return;
+
+    }
+
+
+    const key =
+      `${base}-${type}`;
+
+
+    if (
+      d > lo &&
+      d <= hi &&
+      !alertedSet.has(key)
+    ) {
+
+      alertedSet.add(
+        key
+      );
+
+      playSound(
+        snd
+      );
+
+      showFlash(
+        fl
+      );
+
+
+      setTimeout(
+        () => {
+
+          speak(
+            msg
+          );
+
+        },
+        800
+      );
+
+    }
+
+
+    if (
+      type === 'spawn' &&
+      d < -180
+    ) {
+
+      alertedSet.delete(
+        key
+      );
+
+    }
+
+    else if (
+      type !== 'spawn' &&
+      d < -130
+    ) {
+
+      alertedSet.delete(
+        key
+      );
+
+    }
+
+  }
+
+
+  /*
+   * 15 minutos continua funcionando
+   * junto com o sistema de 5 minutos.
+   *
+   * O botão controla o alerta de 5 min,
+   * 1 min e nascimento.
+   */
+
+  if (
+    selectedAlertTypes.has('5')
+  ) {
+
+    fire(
+      'warn15',
+      860,
+      910,
+      'warn15',
+      'fw',
+      `Atenção! ${boss.name} vai nascer em quinze minutos.`
+    );
+
+  }
+
+
+  if (
+    selectedAlertTypes.has('5')
+  ) {
+
+    fire(
+      'alert5',
+      285,
+      315,
+      'alert5',
+      'fa',
+      `Cuidado! ${boss.name} vai nascer em cinco minutos! Prepare-se para o combate!`
+    );
+
+  }
+
+
+  if (
+    selectedAlertTypes.has('1')
+  ) {
+
+    fire(
+      'critical1',
+      50,
+      75,
+      'critical1',
+      'fc',
+      `${boss.name} vai nascer agora! Menos de um minuto!`
+    );
+
+  }
+
+
+  if (
+    selectedAlertTypes.has('spawn')
+  ) {
+
+    fire(
+      'spawn',
+      -15,
+      3,
+      'spawn',
+      'fg',
+      `${boss.name} spawnou! Corra para o combate!`
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   PAINEL
+========================================================= */
+
+let panelIsOpen =
+  false;
+
+let panelClosedByUser =
+  false;
+
+let panelCurrentIds =
+  '';
+
+let panelCurrentLevel =
+  '';
+
+let spawnCloseTimer =
+  null;
+
+
+function userClosePanel() {
+
+  panelClosedByUser =
+    true;
+
+  openOrClose(
+    false
+  );
+
+}
+
+
+function openOrClose(open) {
+
+  const panel =
+    document.getElementById(
+      'alert-panel'
+    );
+
+
+  if (
+    open === panelIsOpen
+  ) {
+
+    return;
+
+  }
+
+
+  panelIsOpen =
+    open;
+
+
+  if (open) {
+
+    panel.classList.add(
+      'open'
+    );
+
+  }
+
+  else {
+
+    panel.classList.remove(
+      'open'
+    );
+
+  }
+
+}
+
+
+function setPanelLevel(
+  level
+) {
+
+  if (
+    level ===
+    panelCurrentLevel
+  ) {
+
+    return;
+
+  }
+
+
+  panelCurrentLevel =
+    level;
+
+
+  const panel =
+    document.getElementById(
+      'alert-panel'
+    );
+
+
+  panel.classList.remove(
+    'lvl-soon',
+    'lvl-alert',
+    'lvl-critical',
+    'lvl-spawning'
+  );
+
+
+  panel.classList.add(
+    `lvl-${level}`
+  );
+
+
+  document.getElementById(
+    'panel-label'
+  ).textContent =
+
+    level === 'critical'
+      ? '⚠ Nasce agora — menos de 1 minuto!'
+
+      : level === 'spawning'
+        ? '💀 Spawning agora!'
+
+        : level === 'alert'
+          ? '⚔ Chegando — 5 minutos!'
+
+          : '⚠ Em breve — 15 minutos';
+
+}
+
+
+function buildPanelRows(
+  alertBosses
+) {
+
+  const body =
+    document.getElementById(
+      'panel-body'
+    );
+
+
+  body.innerHTML =
+    alertBosses
+      .map(
+        ({boss}) => `
+
+      <div
+        class="panel-boss"
+        id="prow-${boss.id}"
+      >
+
+        <div class="panel-img-wrap">
+
+          ${
+            boss.img
+
+              ? `<img
+                  src="${boss.img}"
+                  alt="${boss.name}"
+                  onload="this.classList.add('loaded')"
+                  onerror="this.style.display='none'"
+                >`
+
+              : ''
+          }
+
+        </div>
+
+        <div class="panel-info">
+
+          <div class="panel-boss-name">
+            ${boss.name}
+          </div>
+
+          <div class="panel-boss-loc">
+            ${boss.location}
+          </div>
+
+        </div>
+
+        <div
+          class="panel-cd"
+          id="pcd-${boss.id}"
+        >
+          --:--
+        </div>
+
+      </div>
+
+    `
+      )
+      .join('');
+
+}
+
+
+function updatePanelCds(
+  alertBosses
+) {
+
+  alertBosses.forEach(
+    ({boss,next}) => {
+
+      const el =
+        document.getElementById(
+          `pcd-${boss.id}`
+        );
+
+
+      if (!el) {
+
+        return;
+
+      }
+
+
+      const st =
+        getStatus(
+          next.diffSec
+        );
+
+
+      el.textContent =
+        st === 'spawning'
+          ? 'SPAWN!'
+          : fmt(
+              next.diffSec
+            );
+
+    }
+  );
+
+}
+
+
+function managePanel(
+  alertBosses
+) {
+
+  if (
+    !alertBosses.length
+  ) {
+
+    if (
+      panelCurrentLevel !==
+      'spawning'
+    ) {
+
+      openOrClose(
+        false
+      );
+
+      panelCurrentLevel =
+        '';
+
+      panelCurrentIds =
+        '';
+
+      panelClosedByUser =
+        false;
+
+      clearTimeout(
+        spawnCloseTimer
+      );
+
+    }
+
+    return;
+
+  }
+
+
+  const statuses =
+    alertBosses.map(
+      ({next}) =>
+        getStatus(
+          next.diffSec
+        )
+    );
+
+
+  const top =
+    statuses.includes(
+      'critical'
+    )
+
+      ? 'critical'
+
+      : statuses.includes(
+          'spawning'
+        )
+
+        ? 'spawning'
+
+        : statuses.includes(
+            'alert'
+          )
+
+          ? 'alert'
+
+          : 'soon';
+
+
+  const newIds =
+    alertBosses
+      .map(
+        ({boss}) =>
+          boss.id
+      )
+      .sort()
+      .join(',');
+
+
+  const bossesChanged =
+    newIds !==
+    panelCurrentIds;
+
+
+  if (bossesChanged) {
+
+    panelCurrentIds =
+      newIds;
+
+    panelClosedByUser =
+      false;
+
+    buildPanelRows(
+      alertBosses
+    );
+
+    clearTimeout(
+      spawnCloseTimer
+    );
+
+    openOrClose(
+      true
+    );
+
+  }
+
+  else if (
+    !panelClosedByUser &&
+    !panelIsOpen
+  ) {
+
+    openOrClose(
+      true
+    );
+
+  }
+
+
+  setPanelLevel(
+    top
+  );
+
+
+  updatePanelCds(
+    alertBosses
+  );
+
+
+  const allSpawning =
+    statuses.every(
+      s =>
+        s === 'spawning'
+    );
+
+
+  if (
+    allSpawning &&
+    !spawnCloseTimer
+  ) {
+
+    spawnCloseTimer =
+      setTimeout(
+        () => {
+
+          openOrClose(
+            false
+          );
+
+          panelIsOpen =
+            false;
+
+          panelCurrentIds =
+            '';
+
+          panelCurrentLevel =
+            '';
+
+          panelClosedByUser =
+            false;
+
+          spawnCloseTimer =
+            null;
+
+        },
+        120000
+      );
+
+  }
+
+  else if (
+    !allSpawning &&
+    spawnCloseTimer
+  ) {
+
+    clearTimeout(
+      spawnCloseTimer
+    );
+
+    spawnCloseTimer =
+      null;
+
+  }
+
+}
+
+
+/* =========================================================
+   RENDER LISTA
+========================================================= */
+
+let lastOrder =
+  '';
+
+
+function renderList(
+  sorted
+) {
+
+  const newOrder =
+    sorted
+      .map(
+        ({boss}) =>
+          boss.id
+      )
+      .join(',');
+
+
+  const listEl =
+    document.getElementById(
+      'main-list'
+    );
+
+
+  if (
+    newOrder !==
+    lastOrder
+  ) {
+
+    lastOrder =
+      newOrder;
+
+
+    listEl.innerHTML =
+      sorted
+        .map(
+          ({boss,next}) => {
+
+            const allTimes =
+              getAllTimes(
+                boss
+              );
+
+
+            const st =
+              next
+                ? getStatus(
+                    next.diffSec
+                  )
+                : 'inactive';
+
+
+            const cdText =
+              !next
+
+                ? '—'
+
+                : st === 'spawning'
+
+                  ? 'SPAWNING!'
+
+                  : fmt(
+                      next.diffSec
+                    );
+
+
+            const cdCls =
+              [
+                'soon',
+                'alert',
+                'critical',
+                'spawning'
+              ]
+              .includes(st)
+                ? st
+                : '';
+
+
+            const hlClass =
+              !next
+
+                ? 'hl-inactive'
+
+                : st === 'spawning'
+
+                  ? 'hl-spawning'
+
+                  : st === 'critical'
+
+                    ? 'hl-critical'
+
+                    : st === 'alert'
+
+                      ? 'hl-alert'
+
+                      : st === 'soon'
+
+                        ? 'hl-soon'
+
+                        : '';
+
+
+            let tagText;
+
+            if (
+              st === 'spawning'
+            ) {
+
+              tagText =
+                '⚔ Em combate';
+
+            }
+
+            else if (
+              st === 'critical'
+            ) {
+
+              tagText =
+                '💀 Menos de 1 minuto!';
+
+            }
+
+            else if (
+              st === 'alert'
+            ) {
+
+              tagText =
+                '🔴 5 minutos!';
+
+            }
+
+            else if (
+              st === 'soon'
+            ) {
+
+              tagText =
+                '🟡 15 minutos';
+
+            }
+
+            else if (!next) {
+
+              tagText =
+                'Sem spawn hoje';
+
+            }
+
+            else {
+
+              tagText =
+                'Aguardando';
+
+            }
+
+
+            const tagKey =
+              st === 'spawning'
+                ? 'spawning'
+
+                : st === 'critical'
+                  ? 'critical'
+
+                  : st === 'alert'
+                    ? 'alert'
+
+                    : st === 'soon'
+                      ? 'soon'
+
+                      : !next
+                        ? 'inactive'
+
+                        : 'waiting';
+
+
+            const pillsHTML =
+              allTimes
+                .map(
+                  t =>
+                    `<span class="pill ${
+                      next &&
+                      next.time === t
+                        ? 'active'
+                        : ''
+                    }">${t}</span>`
+                )
+                .join('');
+
+
+            return `
+
+              <div
+                class="boss-card ${hlClass}"
+                id="card-${boss.id}"
+              >
+
+                <div class="boss-img-wrap">
+
+                  ${
+                    boss.img
+
+                      ? `<img
+                          src="${boss.img}"
+                          alt="${boss.name}"
+                          onload="this.classList.add('loaded')"
+                          onerror="this.style.display='none'"
+                        >`
+
+                      : ''
+                  }
+
+                </div>
+
+                <div class="boss-body">
+
+                  <div class="boss-top">
+
+                    <div class="boss-name">
+                      ${boss.name}
+                    </div>
+
+                    <div
+                      class="boss-cd ${cdCls}"
+                      id="cd-${boss.id}"
+                    >
+                      ${cdText}
+                    </div>
+
+                  </div>
+
+                  <div class="boss-location">
+                    ${boss.location}
+                  </div>
+
+                  <div
+                    class="boss-pills"
+                    id="pills-${boss.id}"
+                  >
+                    ${pillsHTML}
+                  </div>
+
+                  <div class="boss-days">
+                    ${boss.daysLabel}
+                  </div>
+
+                  <span
+                    class="status-tag tag-${tagKey}"
+                    id="tag-${boss.id}"
+                  >
+                    ${tagText}
+                  </span>
+
+                </div>
+
+              </div>
+
+            `;
+
+          }
+        )
+        .join('');
+
+  }
+
+  else {
+
+    sorted.forEach(
+      ({boss,next}) => {
+
+        const st =
+          next
+            ? getStatus(
+                next.diffSec
+              )
+            : 'inactive';
+
+
+        const card =
+          document.getElementById(
+            `card-${boss.id}`
+          );
+
+
+        const cdEl =
+          document.getElementById(
+            `cd-${boss.id}`
+          );
+
+
+        const tagEl =
+          document.getElementById(
+            `tag-${boss.id}`
+          );
+
+
+        if (
+          !card ||
+          !cdEl
+        ) {
+
+          return;
+
+        }
+
+
+        const hlClass =
+          !next
+
+            ? 'hl-inactive'
+
+            : st === 'spawning'
+
+              ? 'hl-spawning'
+
+              : st === 'critical'
+
+                ? 'hl-critical'
+
+                : st === 'alert'
+
+                  ? 'hl-alert'
+
+                  : st === 'soon'
+
+                    ? 'hl-soon'
+
+                    : '';
+
+
+        card.className =
+          `boss-card ${hlClass}`;
+
+
+        const cdText =
+          !next
+
+            ? '—'
+
+            : st === 'spawning'
+
+              ? 'SPAWNING!'
+
+              : fmt(
+                  next.diffSec
+                );
+
+
+        cdEl.textContent =
+          cdText;
+
+
+        cdEl.className =
+          `boss-cd ${
+            [
+              'soon',
+              'alert',
+              'critical',
+              'spawning'
+            ]
+            .includes(st)
+              ? st
+              : ''
+          }`;
+
+
+        if (tagEl) {
+
+          const tagMap = {
+
+            spawning:
+              '⚔ Em combate',
+
+            critical:
+              '💀 Menos de 1 minuto!',
+
+            alert:
+              '🔴 5 minutos!',
+
+            soon:
+              '🟡 15 minutos',
+
+            inactive:
+              'Sem spawn hoje',
+
+            waiting:
+              'Aguardando'
+
+          };
+
+
+          const tagKey =
+            st === 'spawning'
+              ? 'spawning'
+
+              : st === 'critical'
+                ? 'critical'
+
+                : st === 'alert'
+                  ? 'alert'
+
+                  : st === 'soon'
+                    ? 'soon'
+
+                    : !next
+                      ? 'inactive'
+
+                      : 'waiting';
+
+
+          tagEl.textContent =
+            tagMap[tagKey];
+
+
+          tagEl.className =
+            `status-tag tag-${tagKey}`;
+
+        }
+
+
+        const allTimes =
+          getAllTimes(
+            boss
+          );
+
+
+        const pillsEl =
+          document.getElementById(
+            `pills-${boss.id}`
+          );
+
+
+        if (pillsEl) {
+
+          pillsEl
+            .querySelectorAll(
+              '.pill'
+            )
+            .forEach(
+              (p,i) => {
+
+                p.classList.toggle(
+                  'active',
+                  !!(
+                    next &&
+                    allTimes[i] ===
+                    next.time
+                  )
+                );
+
+              }
+            );
+
+        }
+
+      }
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   TICK
+========================================================= */
+
+function tick() {
+
+  const brt =
+    getBRT();
+
+
+  const p =
+    n =>
+      String(n)
+        .padStart(
+          2,
+          '0'
+        );
+
+
+  document.getElementById(
+    'clock'
+  ).textContent =
+    `${p(brt.getHours())}:${p(brt.getMinutes())}:${p(brt.getSeconds())}`;
+
+
+  document.getElementById(
+    'day'
+  ).textContent =
+    DIAS[
+      brt.getDay()
+    ].toUpperCase();
+
+
+  const items =
+    BOSSES.map(
+      boss => ({
+
+        boss,
+
+        next:
+          getNextSpawn(
+            boss
+          )
+
+      })
+    );
+
+
+  items.sort(
+    (a,b) => {
+
+      if (
+        !a.next &&
+        !b.next
+      ) {
+
+        return 0;
+
+      }
+
+
+      if (!a.next) {
+
+        return 1;
+
+      }
+
+
+      if (!b.next) {
+
+        return -1;
+
+      }
+
+
+      return (
+        a.next.diffSec -
+        b.next.diffSec
+      );
+
+    }
+  );
+
+
+  items.forEach(
+    ({boss,next}) => {
+
+      checkAlerts(
+        boss,
+        next
+      );
+
+    }
+  );
+
+
+  const alertBosses =
+    items.filter(
+      ({next}) =>
+
+        next &&
+
+        [
+          'soon',
+          'alert',
+          'critical',
+          'spawning'
+        ]
+        .includes(
+          getStatus(
+            next.diffSec
+          )
+        )
+    );
+
+
+  managePanel(
+    alertBosses
+  );
+
+
+  renderList(
+    items
+  );
+
+}
+
+
+/* =========================================================
+   INICIALIZAÇÃO
+========================================================= */
+
+if (
+  window.speechSynthesis
+) {
+
+  window.speechSynthesis
+    .getVoices();
+
+}
+
+
+/*
+ * Carrega configurações
+ * antes de iniciar.
+ */
+
+loadSettings();
+
+
+/*
+ * Envia os alertas salvos
+ * para o Android.
+ */
+
+try {
+
+  if (
+    window.AndroidNotifications
+  ) {
+
+    const saved =
+      localStorage.getItem(
+        'aorus_alert_types'
+      );
+
+
+    if (
+      saved &&
+      AndroidNotifications.setAlertTypes
+    ) {
+
+      AndroidNotifications.setAlertTypes(
+        saved
+      );
+
+    }
+
+  }
+
+} catch(e) {}
+
+
+/*
+ * Libera áudio quando o usuário
+ * tocar em algum botão.
+ */
+
+/*
+ * Libera áudio quando o usuário
+ * tocar em algum botão.
+ */
+
+document.addEventListener(
+  'click',
+  () => {
+
+    if (
+      soundEnabled &&
+      !audioUnlocked
+    ) {
+
+      activateAudio();
+
+    }
+
+  },
+  {
+    once:true
+  }
+);
+
+
+/*
+ * Primeira atualização.
+ */
+
+tick();
+
+
+/*
+ * Atualiza a cada segundo.
+ */
+
+setInterval(
+  tick,
+  1000
+);
+
+</script>
+
+<div
+  style="
+    position: fixed;
+    bottom: 8px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 10px;
+    color: #8a8178;
+    letter-spacing: 1px;
+    pointer-events: none;
+    z-index: 9999;
+  "
+>
+  CRIADO POR ZNNAN • 2026
+</div>
+
+</body>
+</html>
